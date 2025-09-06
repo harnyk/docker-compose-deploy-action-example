@@ -11,6 +11,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# AWS management scripts
+aws-scripts
+
 # Logs
 logs/
 *.log
