@@ -7,6 +7,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     
+    env:
+      SSH_HOST: ${{ vars.SSH_HOST }}
+      SSH_USERNAME: ${{ vars.SSH_USERNAME }}
+      SSH_PORT: ${{ vars.SSH_PORT }}
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -14,21 +19,21 @@ jobs:
     - name: Copy files to server
       uses: appleboy/scp-action@v0.1.7
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.KEY }}
-        port: ${{ secrets.PORT }}
+        host: ${{ env.SSH_HOST }}
+        username: ${{ env.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ env.SSH_PORT }}
         source: "."
-        target: "/home/${{ secrets.USERNAME }}/docker-compose-deploy-action-example"
+        target: "/home/${{ env.SSH_USERNAME }}/docker-compose-deploy-action-example"
         rm: true
         
     - name: Install Docker
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.KEY }}
-        port: ${{ secrets.PORT }}
+        host: ${{ env.SSH_HOST }}
+        username: ${{ env.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ env.SSH_PORT }}
         script: |
           # Install Docker if not exists
           if ! command -v docker &> /dev/null; then
@@ -53,10 +58,10 @@ jobs:
     - name: Setup Docker Compose
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.KEY }}
-        port: ${{ secrets.PORT }}
+        host: ${{ env.SSH_HOST }}
+        username: ${{ env.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ env.SSH_PORT }}
         script: |
           # Detect which Docker Compose command to use
           if docker compose version &> /dev/null; then
@@ -78,12 +83,12 @@ jobs:
     - name: Deploy with Docker Compose
       uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.KEY }}
-        port: ${{ secrets.PORT }}
+        host: ${{ env.SSH_HOST }}
+        username: ${{ env.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ env.SSH_PORT }}
         script: |
-          cd /home/${{ secrets.USERNAME }}/docker-compose-deploy-action-example
+          cd /home/${{ env.SSH_USERNAME }}/docker-compose-deploy-action-example
           source ~/.compose_env
           $COMPOSE_CMD down
           $COMPOSE_CMD up -d
