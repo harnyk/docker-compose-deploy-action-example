@@ -31,7 +31,7 @@ jobs:
         target: "/home/${{ secrets.USERNAME }}/docker-compose-deploy-action-example"
         rm: true
         
-    - name: Install Docker Compose on server
+    - name: Setup Docker Compose
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
@@ -39,12 +39,22 @@ jobs:
         key: ${{ secrets.KEY }}
         port: ${{ secrets.PORT }}
         script: |
-          # Install Docker Compose if not exists
-          if ! command -v docker-compose &> /dev/null; then
+          # Detect which Docker Compose command to use
+          if docker compose version &> /dev/null; then
+            echo "COMPOSE_CMD=docker compose" >> ~/.compose_env
+            echo "Using modern docker compose"
+            docker compose version
+          elif command -v docker-compose &> /dev/null; then
+            echo "COMPOSE_CMD=docker-compose" >> ~/.compose_env
+            echo "Using legacy docker-compose"
+            docker-compose --version
+          else
+            echo "Installing docker-compose..."
             sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
+            echo "COMPOSE_CMD=docker-compose" >> ~/.compose_env
+            docker-compose --version
           fi
-          docker-compose --version
           
     - name: Deploy with Docker Compose
       uses: appleboy/ssh-action@v1.0.3
@@ -55,6 +65,7 @@ jobs:
         port: ${{ secrets.PORT }}
         script: |
           cd /home/${{ secrets.USERNAME }}/docker-compose-deploy-action-example
-          docker-compose down
-          docker-compose up -d
-          docker-compose ps
+          source ~/.compose_env
+          $COMPOSE_CMD down
+          $COMPOSE_CMD up -d
+          $COMPOSE_CMD ps
