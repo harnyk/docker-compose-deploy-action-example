@@ -89,7 +89,19 @@ jobs:
         port: ${{ env.SSH_PORT }}
         script: |
           cd /home/${{ env.SSH_USERNAME }}/docker-compose-deploy-action-example
-          source ~/.compose_env
+          
+          # Detect which Docker Compose command to use in this session
+          if docker compose version &> /dev/null; then
+            COMPOSE_CMD="docker compose"
+            echo "Using modern docker compose"
+          elif command -v docker-compose &> /dev/null; then
+            COMPOSE_CMD="docker-compose"
+            echo "Using legacy docker-compose"
+          else
+            echo "ERROR: No Docker Compose found!"
+            exit 1
+          fi
+          
           $COMPOSE_CMD down
           $COMPOSE_CMD up -d
           $COMPOSE_CMD ps
