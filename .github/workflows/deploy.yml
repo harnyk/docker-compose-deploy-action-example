@@ -31,6 +31,21 @@ jobs:
         target: "/home/${{ secrets.USERNAME }}/docker-compose-deploy-action-example"
         rm: true
         
+    - name: Install Docker Compose on server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        port: ${{ secrets.PORT }}
+        script: |
+          # Install Docker Compose if not exists
+          if ! command -v docker-compose &> /dev/null; then
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
+          docker-compose --version
+          
     - name: Deploy with Docker Compose
       uses: appleboy/ssh-action@v1.0.3
       with:
