@@ -5,12 +5,13 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     
     env:
       SSH_HOST: ${{ vars.SSH_HOST }}
       SSH_USERNAME: ${{ vars.SSH_USERNAME }}
       SSH_PORT: ${{ vars.SSH_PORT }}
+      TARGET_DIR: ${{ vars.TARGET_DIR || '/opt/docker-compose-deploy-action-example' }}
     
     steps:
     - name: Checkout code
@@ -22,9 +23,10 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         source: "."
-        target: "/home/${{ env.SSH_USERNAME }}/docker-compose-deploy-action-example"
+        target: "${{ env.TARGET_DIR }}"
         rm: true
         
     - name: Install Docker
@@ -33,6 +35,7 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         script: |
           # Install Docker if not exists
@@ -61,6 +64,7 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         script: |
           # Detect which Docker Compose command to use
@@ -108,9 +112,10 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         script: |
-          cd /home/${{ env.SSH_USERNAME }}/docker-compose-deploy-action-example
+          cd ${{ env.TARGET_DIR }}
           
           # Detect which Docker Compose command to use in this session
           if docker compose version &> /dev/null; then
