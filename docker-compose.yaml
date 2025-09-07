@@ -4,11 +4,7 @@ services:
     ports:
       - "127.0.0.1:80:80"  # Bind to localhost only for security
     restart: unless-stopped
-    
-    # Security improvements
-    user: "101:101"  # Run as nginx user, not root
-    read_only: true  # Make container filesystem read-only
-    
+   
     # Resource limits
     deploy:
       resources:
