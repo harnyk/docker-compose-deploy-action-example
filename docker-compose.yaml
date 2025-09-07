@@ -2,7 +2,7 @@ services:
   web:
     image: nginx:1.25.3-alpine  # Pin specific version instead of latest
     ports:
-      - "127.0.0.1:80:80"  # Bind to localhost only for security
+      - "80:80"
     restart: unless-stopped
    
     # Resource limits
