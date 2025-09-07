@@ -1,6 +1,43 @@
 services:
   web:
-    image: nginx:alpine
+    image: nginx:1.25.3-alpine  # Pin specific version instead of latest
     ports:
-      - "80:80"
+      - "127.0.0.1:80:80"  # Bind to localhost only for security
     restart: unless-stopped
+    
+    # Security improvements
+    user: "101:101"  # Run as nginx user, not root
+    read_only: true  # Make container filesystem read-only
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Security context
+    security_opt:
+      - no-new-privileges:true
+    
+    # Temporary filesystem for nginx to write to
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Environment variables
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
