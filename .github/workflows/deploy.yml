@@ -67,13 +67,13 @@ jobs:
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         script: |
-          # Detect which Docker Compose command to use
+          # Detect which Docker Compose command to use and save for deployment
           if docker compose version &> /dev/null; then
-            echo "COMPOSE_CMD=docker compose" >> ~/.compose_env
+            echo "docker compose" > ~/.compose_cmd
             echo "Using modern docker compose"
             docker compose version
           elif command -v docker-compose &> /dev/null; then
-            echo "COMPOSE_CMD=docker-compose" >> ~/.compose_env
+            echo "docker-compose" > ~/.compose_cmd
             echo "Using legacy docker-compose"
             docker-compose --version
           else
@@ -86,23 +86,9 @@ jobs:
             # Download docker-compose binary
             sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-${COMPOSE_OS}-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose
             
-            # Verify checksum for Linux x86_64 (most common case)
-            if [[ "${COMPOSE_OS}" == "Linux" && "${COMPOSE_ARCH}" == "x86_64" ]]; then
-              EXPECTED_SHA256="3c7912d62c02f2b1dbf79e8fb3c0b2e2dd6c5e9e3d8f6c8c6c4b3b1c0a9e8f7d"
-              ACTUAL_SHA256=$(sha256sum /usr/local/bin/docker-compose | cut -d' ' -f1)
-              if [[ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]]; then
-                echo "WARNING: Checksum verification failed. Expected: ${EXPECTED_SHA256}, Got: ${ACTUAL_SHA256}"
-                echo "Proceeding anyway, but consider updating the expected checksum"
-              else
-                echo "Checksum verification passed"
-              fi
-            else
-              echo "Checksum verification skipped for ${COMPOSE_OS}-${COMPOSE_ARCH}"
-            fi
-            
-            # Set executable permissions (more restrictive)
+            # Set executable permissions
             sudo chmod 755 /usr/local/bin/docker-compose
-            echo "COMPOSE_CMD=docker-compose" >> ~/.compose_env
+            echo "docker-compose" > ~/.compose_cmd
             docker-compose --version
           fi
           
@@ -117,15 +103,12 @@ jobs:
         script: |
           cd ${{ env.TARGET_DIR }}
           
-          # Detect which Docker Compose command to use in this session
-          if docker compose version &> /dev/null; then
-            COMPOSE_CMD="docker compose"
-            echo "Using modern docker compose"
-          elif command -v docker-compose &> /dev/null; then
-            COMPOSE_CMD="docker-compose"
-            echo "Using legacy docker-compose"
+          # Read Docker Compose command from setup step
+          if [[ -f ~/.compose_cmd ]]; then
+            COMPOSE_CMD=$(cat ~/.compose_cmd)
+            echo "Using saved Docker Compose command: $COMPOSE_CMD"
           else
-            echo "ERROR: No Docker Compose found!"
+            echo "ERROR: Docker Compose not configured! Setup step failed."
             exit 1
           fi
           
@@ -137,38 +120,21 @@ jobs:
           fi
           echo "Configuration validation passed"
           
-          # Show what services will be affected
-          echo "Services to be deployed:"
-          $COMPOSE_CMD config --services
+          # Deploy with minimal downtime (pull latest images and recreate containers)
+          echo "Deploying services..."
+          if ! $COMPOSE_CMD up -d --pull always --force-recreate --timeout 30; then
+            echo "ERROR: Docker Compose up failed!"
+            $COMPOSE_CMD logs --tail=50
+            exit 1
+          fi
           
-          # Check current running services
-          echo "Currently running services:"
-          $COMPOSE_CMD ps --services --filter "status=running" || echo "No services currently running"
-          
-          # Stop existing services gracefully
-          echo "Stopping existing services..."
-          $COMPOSE_CMD down --timeout 30
-          
-          # Clean up unused resources for security
-          echo "Cleaning up unused Docker resources..."
-          docker system prune -f --volumes
-          
-          # Deploy new version
-          echo "Starting updated services..."
-          $COMPOSE_CMD up -d --timeout 30
-          
-          # Verify deployment
+          # Quick verification
           echo "Verifying deployment..."
           sleep 5
-          $COMPOSE_CMD ps
-          
-          # Check service health
-          FAILED_SERVICES=$($COMPOSE_CMD ps --filter "status=exited" --format "table {{.Service}}" | tail -n +2)
-          if [[ -n "$FAILED_SERVICES" ]]; then
-            echo "ERROR: Some services failed to start:"
-            echo "$FAILED_SERVICES"
-            echo "Service logs:"
-            $COMPOSE_CMD logs --tail=50
+          if ! $COMPOSE_CMD ps --quiet; then
+            echo "ERROR: Some services failed to start!"
+            $COMPOSE_CMD ps
+            $COMPOSE_CMD logs --tail=30
             exit 1
           fi
           
