@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+COMPOSE_FILE=docker-compose.yml
+
 # Ensure TARGET_DIR is provided
 if [ -z "$TARGET_DIR" ]; then
   echo "ERROR: TARGET_DIR environment variable is required!"
@@ -20,7 +22,7 @@ fi
 
 # Validate docker-compose configuration
 echo "Validating Docker Compose configuration..."
-if ! $COMPOSE_CMD -f docker-compose-prod.yml config --quiet; then
+if ! $COMPOSE_CMD -f $COMPOSE_FILE config --quiet; then
   echo "ERROR: Invalid docker-compose configuration!"
   exit 1
 fi
@@ -28,19 +30,19 @@ echo "Configuration validation passed"
 
 # Deploy with minimal downtime (pull latest images and recreate containers)
 echo "Deploying services..."
-if ! $COMPOSE_CMD -f docker-compose-prod.yml up -d --pull always --force-recreate --timeout 30; then
+if ! $COMPOSE_CMD -f $COMPOSE_FILE up -d --pull always --force-recreate --timeout 30; then
   echo "ERROR: Docker Compose up failed!"
-  $COMPOSE_CMD -f docker-compose-prod.yml logs --tail=50
+  $COMPOSE_CMD -f $COMPOSE_FILE logs --tail=50
   exit 1
 fi
 
 # Quick verification
 echo "Verifying deployment..."
 sleep 5
-if ! $COMPOSE_CMD -f docker-compose-prod.yml ps --quiet; then
+if ! $COMPOSE_CMD -f $COMPOSE_FILE ps --quiet; then
   echo "ERROR: Some services failed to start!"
-  $COMPOSE_CMD -f docker-compose-prod.yml ps
-  $COMPOSE_CMD -f docker-compose-prod.yml logs --tail=30
+  $COMPOSE_CMD -f $COMPOSE_FILE ps
+  $COMPOSE_CMD -f $COMPOSE_FILE logs --tail=30
   exit 1
 fi
 
