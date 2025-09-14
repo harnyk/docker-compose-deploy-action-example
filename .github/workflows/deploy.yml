@@ -64,4 +64,4 @@ jobs:
         port: ${{ env.SSH_PORT }}
         script: |
           cd ${{ env.TARGET_DIR }}
-          TARGET_DIR=${{ env.TARGET_DIR }} ./github-workflow-scripts/deploy.sh
+          COMPOSE_FILE=${{ env.COMPOSE_FILE }} TARGET_DIR=${{ env.TARGET_DIR }} ./github-workflow-scripts/deploy.sh
