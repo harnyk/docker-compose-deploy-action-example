@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     env:
+      COMPOSE_FILE: docker-compose.yaml
       SSH_HOST: ${{ vars.SSH_HOST }}
       SSH_USERNAME: ${{ vars.SSH_USERNAME }}
       SSH_PORT: ${{ vars.SSH_PORT }}
