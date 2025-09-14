@@ -6,17 +6,17 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-22.04
-    
+
     env:
       SSH_HOST: ${{ vars.SSH_HOST }}
       SSH_USERNAME: ${{ vars.SSH_USERNAME }}
       SSH_PORT: ${{ vars.SSH_PORT }}
-      TARGET_DIR: ${{ vars.TARGET_DIR || '/opt/docker-compose-deploy-action-example' }}
-    
+      TARGET_DIR: ${{ vars.TARGET_DIR || '/opt/kharkov-apartment-production' }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Copy files to server
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -28,7 +28,7 @@ jobs:
         source: "."
         target: "${{ env.TARGET_DIR }}"
         rm: true
-        
+
     - name: Install Docker
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -38,25 +38,8 @@ jobs:
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         script: |
-          # Install Docker if not exists
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-            curl -fsSL https://get.docker.com -o get-docker.sh
-            sudo sh get-docker.sh
-            sudo usermod -aG docker $USER
-            rm get-docker.sh
-            echo "Docker installed successfully"
-          else
-            echo "Docker is already installed"
-          fi
-          docker --version
-          
-          # Start Docker service if not running
-          if ! sudo systemctl is-active docker &> /dev/null; then
-            echo "Starting Docker service..."
-            sudo systemctl start docker
-            sudo systemctl enable docker
-          fi
+          cd ${{ env.TARGET_DIR }}
+          ./github-workflow-scripts/install-docker.sh
 
     - name: Setup Docker Compose
       uses: appleboy/ssh-action@v1.0.3
@@ -67,31 +50,9 @@ jobs:
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ env.SSH_PORT }}
         script: |
-          # Detect which Docker Compose command to use and save for deployment
-          if docker compose version &> /dev/null; then
-            echo "docker compose" > ~/.compose_cmd
-            echo "Using modern docker compose"
-            docker compose version
-          elif command -v docker-compose &> /dev/null; then
-            echo "docker-compose" > ~/.compose_cmd
-            echo "Using legacy docker-compose"
-            docker-compose --version
-          else
-            echo "Installing docker-compose..."
-            # Use specific version for security
-            COMPOSE_VERSION="v2.24.0"
-            COMPOSE_ARCH=$(uname -m)
-            COMPOSE_OS=$(uname -s)
-            
-            # Download docker-compose binary
-            sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-${COMPOSE_OS}-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose
-            
-            # Set executable permissions
-            sudo chmod 755 /usr/local/bin/docker-compose
-            echo "docker-compose" > ~/.compose_cmd
-            docker-compose --version
-          fi
-          
+          cd ${{ env.TARGET_DIR }}
+          ./github-workflow-scripts/setup-docker-compose.sh
+
     - name: Deploy with Docker Compose
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -102,40 +63,4 @@ jobs:
         port: ${{ env.SSH_PORT }}
         script: |
           cd ${{ env.TARGET_DIR }}
-          
-          # Read Docker Compose command from setup step
-          if [[ -f ~/.compose_cmd ]]; then
-            COMPOSE_CMD=$(cat ~/.compose_cmd)
-            echo "Using saved Docker Compose command: $COMPOSE_CMD"
-          else
-            echo "ERROR: Docker Compose not configured! Setup step failed."
-            exit 1
-          fi
-          
-          # Validate docker-compose configuration
-          echo "Validating Docker Compose configuration..."
-          if ! $COMPOSE_CMD config --quiet; then
-            echo "ERROR: Invalid docker-compose configuration!"
-            exit 1
-          fi
-          echo "Configuration validation passed"
-          
-          # Deploy with minimal downtime (pull latest images and recreate containers)
-          echo "Deploying services..."
-          if ! $COMPOSE_CMD up -d --pull always --force-recreate --timeout 30; then
-            echo "ERROR: Docker Compose up failed!"
-            $COMPOSE_CMD logs --tail=50
-            exit 1
-          fi
-          
-          # Quick verification
-          echo "Verifying deployment..."
-          sleep 5
-          if ! $COMPOSE_CMD ps --quiet; then
-            echo "ERROR: Some services failed to start!"
-            $COMPOSE_CMD ps
-            $COMPOSE_CMD logs --tail=30
-            exit 1
-          fi
-          
-          echo "Deployment completed successfully!"
+          TARGET_DIR=${{ env.TARGET_DIR }} ./github-workflow-scripts/deploy.sh
