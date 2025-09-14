@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-COMPOSE_FILE=docker-compose.yml
+COMPOSE_FILE=docker-compose.yaml
 
 # Ensure TARGET_DIR is provided
 if [ -z "$TARGET_DIR" ]; then
