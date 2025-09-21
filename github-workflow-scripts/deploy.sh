@@ -35,17 +35,24 @@ else
   exit 1
 fi
 
-# Validate docker-compose configuration
+# Validate docker-compose configuration (portable way)
 echo "Validating Docker Compose configuration..."
-if ! $COMPOSE_CMD -f "$COMPOSE_FILE" config --quiet; then
+if ! $COMPOSE_CMD -f "$COMPOSE_FILE" config >/dev/null; then
   echo "ERROR: Invalid docker-compose configuration!"
   exit 1
 fi
 echo "Configuration validation passed"
 
-# Deploy with minimal downtime (pull latest images and recreate containers)
+# Pull latest images
+echo "Pulling images..."
+if ! $COMPOSE_CMD -f "$COMPOSE_FILE" pull; then
+  echo "ERROR: Docker Compose pull failed!"
+  exit 1
+fi
+
+# Deploy with minimal downtime
 echo "Deploying services..."
-if ! $COMPOSE_CMD -f "$COMPOSE_FILE" up -d --pull always --force-recreate --timeout 30; then
+if ! $COMPOSE_CMD -f "$COMPOSE_FILE" up -d --force-recreate --timeout 30; then
   echo "ERROR: Docker Compose up failed!"
   $COMPOSE_CMD -f "$COMPOSE_FILE" logs --tail=50
   exit 1
@@ -54,7 +61,7 @@ fi
 # Quick verification
 echo "Verifying deployment..."
 sleep 5
-if ! $COMPOSE_CMD -f "$COMPOSE_FILE" ps --quiet; then
+if ! $COMPOSE_CMD -f "$COMPOSE_FILE" ps | grep -q "Up"; then
   echo "ERROR: Some services failed to start!"
   $COMPOSE_CMD -f "$COMPOSE_FILE" ps
   $COMPOSE_CMD -f "$COMPOSE_FILE" logs --tail=30
