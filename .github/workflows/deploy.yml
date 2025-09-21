@@ -2,6 +2,11 @@ name: Deploy with Docker Compose
 
 on:
   workflow_dispatch:
+    inputs:
+      ssh_passphrase:
+        description: 'SSH private key passphrase'
+        required: true
+        type: string
 
 jobs:
   deploy:
@@ -24,7 +29,7 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        passphrase: ${{ inputs.ssh_passphrase }}
         port: ${{ env.SSH_PORT }}
         source: "."
         target: "${{ env.TARGET_DIR }}"
@@ -36,7 +41,7 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        passphrase: ${{ inputs.ssh_passphrase }}
         port: ${{ env.SSH_PORT }}
         script: |
           cd ${{ env.TARGET_DIR }}
@@ -48,7 +53,7 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        passphrase: ${{ inputs.ssh_passphrase }}
         port: ${{ env.SSH_PORT }}
         script: |
           cd ${{ env.TARGET_DIR }}
@@ -60,7 +65,7 @@ jobs:
         host: ${{ env.SSH_HOST }}
         username: ${{ env.SSH_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        passphrase: ${{ inputs.ssh_passphrase }}
         port: ${{ env.SSH_PORT }}
         script: |
           cd ${{ env.TARGET_DIR }}
